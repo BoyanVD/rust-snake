@@ -25,6 +25,7 @@ struct Game {
     snake: Snake,
     fruit: Fruit,
     walls: Vec<Wall>,
+    score: i16,
 }
 
 impl Game {
@@ -35,6 +36,7 @@ impl Game {
             snake: Snake::new(SNAKE_INIT_POS.0, SNAKE_INIT_POS.1),
             fruit: Fruit::new(FRUIT_INIT_POS.0, FRUIT_INIT_POS.1),
             walls: walls,
+            score: 0,
         }
     }
 
@@ -56,6 +58,15 @@ impl Game {
         || (self.snake.direction == Direction::Left && direction == Direction::Right)
         || (self.snake.direction == Direction::Right && direction == Direction::Left)        
     }
+
+    fn draw_score(&self, ctx: &mut Context) -> GameResult<()> {
+
+        let draw_mode = graphics::DrawMode::Fill(graphics::FillOptions::default());
+        let outline = graphics::Text::new(format!("Score : {}", self.score));
+        graphics::draw(ctx, &outline, graphics::DrawParam::default())?;
+        
+        Ok(())
+    }
 }
 
 impl event::EventHandler for Game {
@@ -68,6 +79,8 @@ impl event::EventHandler for Game {
             (*wall).draw(ctx);
         }
 
+        self.draw_score(ctx);
+
         ggez::graphics::present(ctx);
 
         Ok(())
@@ -79,10 +92,20 @@ impl event::EventHandler for Game {
 
             match self.snake.state {
                 Some(SnakeAction::AteFruit) => {
+                    self.score += 1;
+                    self.add_wall();
                     self.fruit.regenerate_outside_walls(&self.walls);
-                    self.add_wall();},
-                Some(SnakeAction::SelfCollision) => self.snake.reset(),
-                Some(SnakeAction::WallCollision) => self.snake.reset(),
+                },
+                Some(SnakeAction::SelfCollision) => {
+                    self.score = 0;
+                    self.snake.reset();
+                    self.walls.clear();
+                },
+                Some(SnakeAction::WallCollision) => {
+                    self.score = 0;
+                    self.snake.reset();
+                    self.walls.clear();
+                },
                 _ => (),
             }
         }
