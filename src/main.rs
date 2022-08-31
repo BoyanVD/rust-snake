@@ -61,11 +61,12 @@ impl event::EventHandler for Game {
 
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while ggez::timer::check_update_time(ctx, DEFAULT_FPS as u32) {
-            self.snake.update(&self.fruit)?;
+            self.snake.update(&self.fruit, &self.walls)?;
 
             match self.snake.state {
                 Some(SnakeAction::AteFruit) => self.fruit.regenerate_outside_walls(&self.walls),
                 Some(SnakeAction::SelfCollision) => self.snake.reset(),
+                Some(SnakeAction::WallCollision) => self.snake.reset(),
                 _ => (),
             }
         }
@@ -196,6 +197,24 @@ impl Wall {
         Wall{blocks: blocks}
     }
 
+    pub fn position_in_walls(position: Position, walls: &Vec<Wall>) -> bool {
+        for segment in walls {
+            if (*segment).contains_position(position) {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn any_position_in_walls(positions: &Vec<Position>, walls: &Vec<Wall>) -> bool {
+        for position in positions {
+            if Wall::position_in_walls(*position, walls) {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn contains_position(&self, position: Position) -> bool {
         self.blocks.contains(&position)
     }
@@ -227,6 +246,7 @@ impl Wall {
 enum SnakeAction {
     SelfCollision,
     AteFruit,
+    WallCollision,
 }
 
 struct Snake {
@@ -250,7 +270,7 @@ impl Snake {
         }
     }
 
-    fn update(&mut self, fruit: &Fruit) -> GameResult<()> {
+    fn update(&mut self, fruit: &Fruit, walls: &Vec<Wall>) -> GameResult<()> {
         let new_head = Position::new_by_direction(self.head.x, self.head.y, self.direction);
         self.body.insert(0, self.head);
         self.head = new_head;
@@ -259,6 +279,8 @@ impl Snake {
             self.state = Some(SnakeAction::AteFruit)
         } else if self.self_collision() {
             self.state = Some(SnakeAction::SelfCollision)
+        } else if Wall::position_in_walls(self.head, walls) || Wall::any_position_in_walls(&self.body, walls) {
+            self.state = Some(SnakeAction::WallCollision)
         } else {
             self.body.pop();
             self.state = None;
@@ -359,18 +381,9 @@ impl Fruit {
         self.pos = Position::new(x, y)
     }
 
-    fn position_in_walls(&mut self, walls: &Vec<Wall>) -> bool {
-        for segment in walls {
-            if (*segment).contains_position(self.pos) {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn regenerate_outside_walls(&mut self, walls: &Vec<Wall>) {
         self.regenerate();
-        while self.position_in_walls(walls) {
+        while Wall::position_in_walls(self.pos, walls) {
             self.regenerate();
         }
     }
