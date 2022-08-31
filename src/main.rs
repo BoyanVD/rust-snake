@@ -2,7 +2,9 @@ extern crate ggez;
 extern crate rand;
 
 const SNAKE_INIT_POS: (i16, i16) = (5, 5);
-const FRUIT_INIT_POS: (i16, i16) = (10, 10);
+const FRUIT_INIT_POS: (i16, i16) = (15, 15);
+const FIRST_WALL_INIT_POS: (i16, i16) = (10, 10);
+const WALLS_SIZE: i16 = 8;
 
 const PIXEL_SIZE: (i16, i16) = (20, 20);
 const SIZE_IN_PIXELS: (i16, i16) = (20, 20);
@@ -28,12 +30,24 @@ struct Game {
 impl Game {
     pub fn new() -> Self {
         let mut walls = Vec::<Wall>::new();
-        walls.push(Wall::new(10, 10, 3));
+        walls.push(Wall::new(FIRST_WALL_INIT_POS.0, FIRST_WALL_INIT_POS.1, WALLS_SIZE));
         Self {
             snake: Snake::new(SNAKE_INIT_POS.0, SNAKE_INIT_POS.1),
             fruit: Fruit::new(FRUIT_INIT_POS.0, FRUIT_INIT_POS.1),
             walls: walls,
         }
+    }
+
+    pub fn add_wall(&mut self) {
+        let mut rng = rand::thread_rng();
+
+        let rand_x = rng.gen_range(0..SIZE_IN_PIXELS.0);
+        let rand_y = rng.gen_range(0..SIZE_IN_PIXELS.1);
+
+        let x = rand_x as i16;
+        let y = rand_y as i16;
+
+        self.walls.push(Wall::new(x, y, WALLS_SIZE));
     }
 
     fn opposite(&self, direction: Direction) -> bool {
@@ -64,7 +78,9 @@ impl event::EventHandler for Game {
             self.snake.update(&self.fruit, &self.walls)?;
 
             match self.snake.state {
-                Some(SnakeAction::AteFruit) => self.fruit.regenerate_outside_walls(&self.walls),
+                Some(SnakeAction::AteFruit) => {
+                    self.fruit.regenerate_outside_walls(&self.walls);
+                    self.add_wall();},
                 Some(SnakeAction::SelfCollision) => self.snake.reset(),
                 Some(SnakeAction::WallCollision) => self.snake.reset(),
                 _ => (),
