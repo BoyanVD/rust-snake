@@ -151,7 +151,7 @@ impl Wall {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum SnakeAction {
     SelfCollision,
     AteFruit,
@@ -169,19 +169,17 @@ pub struct Snake {
 impl Snake {
     pub fn new(x: i16, y:i16) -> Self {
         let direction = Direction::Right;
-        let mut body = Vec::<Position>::new();
-        body.push(Position::new_by_direction(x, y, direction));
 
         Self {
             head: Position::new(x, y),
-            body: body,
+            body: Vec::<Position>::new(),
             direction: direction,
             state: None,
             empowered: false,
         }
     }
 
-    pub fn update(&mut self, fruit: &Fruit, walls: &Vec<Wall>, score: i16) -> GameResult<()> {
+    pub fn update(&mut self, fruit: &Fruit, walls: &Vec<Wall>) -> GameResult<()> {
         let new_head = Position::new_by_direction(self.head.x, self.head.y, self.direction);
         self.body.insert(0, self.head);
         self.head = new_head;
@@ -225,11 +223,7 @@ impl Snake {
     }
 
     pub fn reset(&mut self) {
-        self.body = vec![Position::new_by_direction(
-            self.head.x,
-            self.head.y,
-            self.direction
-        )];
+        self.body = Vec::<Position>::new();
         self.empowered = false;
     }
 

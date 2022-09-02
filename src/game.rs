@@ -28,7 +28,7 @@ impl Game {
         }
     }
 
-    pub fn add_wall(&mut self) {
+    fn add_wall(&mut self) {
         let mut rng = rand::thread_rng();
 
         let rand_x = rng.gen_range(0..constants::SIZE_IN_PIXELS.0);
@@ -78,7 +78,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn remove_wall(&mut self, position: Position) {
+    fn remove_wall(&mut self, position: Position) {
         self.walls.retain(|wall| !(wall.contains_position(position)));
         self.destroyed_walls += 1;
     }
@@ -107,7 +107,7 @@ impl event::EventHandler for Game {
 
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while ggez::timer::check_update_time(ctx, constants::DEFAULT_FPS as u32) {
-            self.snake.update(&self.fruit, &self.walls, self.score)?;
+            self.snake.update(&self.fruit, &self.walls)?;
 
             match self.snake.get_state() {
                 Some(SnakeAction::AteFruit) => {
