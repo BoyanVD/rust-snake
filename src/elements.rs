@@ -42,7 +42,7 @@ impl Direction {
     }
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Position {
     x: i16,
     y:i16,
