@@ -18,6 +18,9 @@ const SCREEN_SIZE: (f32, f32) = (
     (PIXEL_SIZE.1 * SIZE_IN_PIXELS.1) as f32
 );
 
+const NUMBER_OF_WALLS_ALLOWED_TO_DESTROY: i16 = 3;
+const NUMBER_OF_APPLES_TO_EAT_FOR_POWER: i16 = 5;
+
 use ggez::{event, Context, ContextBuilder, GameResult, graphics};
 use rand::Rng;
 
@@ -26,6 +29,7 @@ struct Game {
     fruit: Fruit,
     walls: Vec<Wall>,
     score: i16,
+    destroyed_walls: i16,
 }
 
 impl Game {
@@ -37,6 +41,7 @@ impl Game {
             fruit: Fruit::new(FRUIT_INIT_POS.0, FRUIT_INIT_POS.1),
             walls: walls,
             score: 0,
+            destroyed_walls: 0,
         }
     }
 
@@ -67,6 +72,33 @@ impl Game {
         
         Ok(())
     }
+
+    fn draw_superpower_left(&self, ctx: &mut Context) -> GameResult<()> {
+
+        let draw_mode = graphics::DrawMode::Fill(graphics::FillOptions::default());
+        let outline = graphics::Text::new(format!("Score : {} Walls left to destroy : {}", 
+        self.score,
+        NUMBER_OF_WALLS_ALLOWED_TO_DESTROY - self.destroyed_walls));
+        graphics::draw(ctx, &outline, graphics::DrawParam::default())?;
+        
+        Ok(())
+    }
+
+    fn draw_apples_for_superpower_left(&self, ctx: &mut Context) -> GameResult<()> {
+
+        let draw_mode = graphics::DrawMode::Fill(graphics::FillOptions::default());
+        let outline = graphics::Text::new(format!("Score : {} Apples for superspower left : {}",
+        self.score,
+        NUMBER_OF_APPLES_TO_EAT_FOR_POWER - self.score % NUMBER_OF_APPLES_TO_EAT_FOR_POWER));
+        graphics::draw(ctx, &outline, graphics::DrawParam::default())?;
+        
+        Ok(())
+    }
+
+    pub fn remove_wall(&mut self, position: Position) {
+        self.walls.retain(|wall| !(wall.contains_position(position)));
+        self.destroyed_walls += 1;
+    }
 }
 
 impl event::EventHandler for Game {
@@ -79,7 +111,13 @@ impl event::EventHandler for Game {
             (*wall).draw(ctx);
         }
 
-        self.draw_score(ctx);
+        // self.draw_score(ctx);
+
+        if self.snake.is_empowered() {
+            self.draw_superpower_left(ctx);
+        } else {
+            self.draw_apples_for_superpower_left(ctx);
+        }
 
         ggez::graphics::present(ctx);
 
@@ -88,13 +126,18 @@ impl event::EventHandler for Game {
 
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         while ggez::timer::check_update_time(ctx, DEFAULT_FPS as u32) {
-            self.snake.update(&self.fruit, &self.walls)?;
+            self.snake.update(&self.fruit, &self.walls, self.score)?;
 
             match self.snake.state {
                 Some(SnakeAction::AteFruit) => {
                     self.score += 1;
                     self.add_wall();
                     self.fruit.regenerate_outside_walls(&self.walls);
+                    if self.score % NUMBER_OF_APPLES_TO_EAT_FOR_POWER == 0 {
+                        self.snake.empower();
+                    } else {
+                        self.snake.remove_power();
+                    }
                 },
                 Some(SnakeAction::SelfCollision) => {
                     self.score = 0;
@@ -102,9 +145,17 @@ impl event::EventHandler for Game {
                     self.walls.clear();
                 },
                 Some(SnakeAction::WallCollision) => {
-                    self.score = 0;
-                    self.snake.reset();
-                    self.walls.clear();
+                    if self.snake.is_empowered() {
+                        self.remove_wall(self.snake.get_head());
+                        if self.destroyed_walls == NUMBER_OF_WALLS_ALLOWED_TO_DESTROY {
+                            self.snake.remove_power();
+                            self.destroyed_walls = 0;
+                        }
+                    } else {
+                        self.score = 0;
+                        self.snake.reset();
+                        self.walls.clear();
+                    }
                 },
                 _ => (),
             }
@@ -293,6 +344,7 @@ struct Snake {
     body: Vec<Position>, // first new line
     direction: Direction,
     state: Option<SnakeAction>,
+    empowered: bool,
 }
 
 impl Snake {
@@ -305,11 +357,12 @@ impl Snake {
             head: Position::new(x, y),
             body: body,
             direction: direction,
-            state: None
+            state: None,
+            empowered: false,
         }
     }
 
-    fn update(&mut self, fruit: &Fruit, walls: &Vec<Wall>) -> GameResult<()> {
+    fn update(&mut self, fruit: &Fruit, walls: &Vec<Wall>, score: i16) -> GameResult<()> {
         let new_head = Position::new_by_direction(self.head.x, self.head.y, self.direction);
         self.body.insert(0, self.head);
         self.head = new_head;
@@ -363,7 +416,8 @@ impl Snake {
             self.head.x,
             self.head.y,
             self.direction
-        )]
+        )];
+        self.empowered = false;
     }
 
     fn self_collision(&self) -> bool {
@@ -374,6 +428,22 @@ impl Snake {
         }
 
         false
+    }
+
+    fn is_empowered(&self) -> bool {
+        self.empowered
+    }
+
+    fn get_head(&self) -> Position {
+        self.head
+    }
+
+    fn remove_power(&mut self) {
+        self.empowered = false;
+    }
+
+    fn empower(&mut self) {
+        self.empowered = true;
     }
 }
 
