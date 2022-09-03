@@ -17,8 +17,6 @@ pub struct Game {
 
 impl Game {
     pub fn new() -> Self {
-        // let mut walls = Vec::<Wall>::new();
-        // walls.push(Wall::new(constants::FIRST_WALL_INIT_POS.0, constants::FIRST_WALL_INIT_POS.1, constants::WALLS_SIZE));
         Self {
             snake: Snake::new(constants::SNAKE_INIT_POS.0, constants::SNAKE_INIT_POS.1),
             fruit: Fruit::new(constants::FRUIT_INIT_POS.0, constants::FRUIT_INIT_POS.1),
